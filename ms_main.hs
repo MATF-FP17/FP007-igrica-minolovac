@@ -2,7 +2,7 @@ module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Data.List.Split
+--import Data.List.Split
 
 --size, fields_num, mines_num ce biti stepeni broja 2
 --dimenzije prozora ce biti size x size 
@@ -26,7 +26,7 @@ background = cyan
 --vrijednost polja: broj susjednih mina - od 0 do 8 ili mina
 data FieldValue = Neighbours Int
  | Mine
- deriving Show
+ deriving (Eq,Show)
 
 --stanje polja - neotkriveno, kliknuto (vrijednost je broj od 0-8 ili mina) ili postavljena zastavica
 data FieldState = Uncovered
@@ -35,7 +35,7 @@ data FieldState = Uncovered
  deriving Show                
 
 --tip koji predstavlja stanje igre
-data GameState = Game ([[FieldValue]], [[FieldState]])
+data GameState = Game ([FieldValue], [FieldState])
  | GameOver     
  deriving Show
 
@@ -44,15 +44,28 @@ initialState :: GameState
 initialState = generateInitialState fields_num mines_num
 
 -- ova funkcija ce na osnovu generisanih mina postaviti ispravne brojeve od 0 do 8 na sva ostala polja
-count_mines = id
+count_mines :: [FieldValue] -> [FieldValue]
+count_mines x =
+  let indeksi = map (\a -> (a `div` fields_num, a `mod` fields_num)) [0,1..]
+      polja = zip indeksi x
+      count :: ((Int,Int),FieldValue) -> FieldValue
+      count (_,Mine) = Mine
+      count ((i,j),_) = let lista_indeksa = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
+                            broj_mina = length $ filter (Mine ==) [snd $ polja !! (fields_num*a+b) | (a,b) <- lista_indeksa]
+                        in Neighbours broj_mina
+  in map count polja
 
 --funkcija koja na pocetku generise igru, ona treba da postavi mine, pa postavi brojeve od 0-8 u ostala polja
 --ona ce da postavi sva polja matrice za stanje igre na Uncovered
 generateInitialState :: Int -> Int -> GameState
-generateInitialState fields_n mines_n = 
- let fields_value = count_mines $ map (\x -> if (fst x) `mod` fields_n == 0 then Mine else Neighbours 0) $ zip [0,1..] $ take (fields_n*fields_n) $ map (\x -> Neighbours 0) [1..]
-     fields_state = map (\x -> Uncovered) fields_value   
- in Game (Data.List.Split.chunksOf fields_n fields_value,Data.List.Split.chunksOf fields_n fields_state) 
+--generateInitialState fields_n mines_n = 
+ --let fields_value = count_mines $ map (\x -> if (fst x) `mod` fields_n == 0 then Mine else Neighbours 0) $ zip [0,1..] $ take (fields_n*fields_n) $ map (\x -> Neighbours 0) [1..]
+     --fields_state = map (\x -> Uncovered) fields_value   
+ --in Game (Data.List.Split.chunksOf fields_n fields_value,Data.List.Split.chunksOf fields_n fields_state)
+generateInitialState fields_n mines_n =
+   let fields_value = count_mines $ take (fields_n*fields_n) $ map (\x -> if (fst x) `mod` fields_n == 0 then Mine else Neighbours 0) $ zip [0,1..] [1..]
+       fields_state = map (\x -> Uncovered) fields_value 
+   in Game (fields_value, fields_state)
 
 --broj frejmova u sekundi
 fps :: Int
