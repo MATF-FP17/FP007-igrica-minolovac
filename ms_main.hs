@@ -2,6 +2,7 @@ module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import Graphics.Gloss.Game
 --import Data.List.Split
 
 --size, fields_num, mines_num ce biti stepeni broja 2
@@ -57,6 +58,7 @@ count_mines x =
 
 --funkcija koja na pocetku generise igru, ona treba da postavi mine, pa postavi brojeve od 0-8 u ostala polja
 --ona ce da postavi sva polja matrice za stanje igre na Uncovered
+
 generateInitialState :: Int -> Int -> GameState
 --generateInitialState fields_n mines_n = 
  --let fields_value = count_mines $ map (\x -> if (fst x) `mod` fields_n == 0 then Mine else Neighbours 0) $ zip [0,1..] $ take (fields_n*fields_n) $ map (\x -> Neighbours 0) [1..]
@@ -105,27 +107,57 @@ handleKeys (EventKey (MouseButton LeftButton) _ _ (x,y)) game = nextState x y ga
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
 
-draw_rect :: Float -> Float -> Float -> Float -> Picture
-draw_rect x_begin x_end y_begin y_end = polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
+--IMPLEMENTIRATI
+draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
+draw_rect pair_vs x_begin x_end y_begin y_end = 
+ let value = fst pair_vs
+     state = snd pair_vs 
+ in if state == Uncovered then polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
+    else Text "1"
+
 coordinates = map fromIntegral [(-size) `div` 2, (-size) `div` 2 + size `div` fields_num ..]
 begin_coordinates = take fields_num coordinates
 end_coordinates = take fields_num (tail coordinates)
 
-draw_rect_row :: Float -> Float -> [Picture]
-draw_rect_row y_begin y_end = map (\tuple_x -> draw_rect (fst tuple_x) (snd tuple_x) y_begin y_end) 
- $ zip begin_coordinates $ end_coordinates  
+--Na osnovu pozicije od 0 do 7 u koloni vraca bas taj element
+takeElemValueState :: [FieldValue] -> [FieldState] -> Float -> (FieldValue, FieldState)
+takeElemValueState values states column_num = (values !! (round column_num), states !! (round column_num))
+
+draw_rect_row :: ([FieldValue], [FieldState]) -> Float -> Float -> [Picture]
+draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (row_column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) 
+y_begin y_end) 
+ $ zip begin_coordinates end_coordinates  
 
 v_lines = map (color white) $ map (\x -> line[(x, fromIntegral $ (-size) `div` 2),(x, fromIntegral $ size `div` 2)]) begin_coordinates
 h_lines = map (color white) $ map (\y -> line[(fromIntegral $ (-size) `div` 2, y),(fromIntegral $ size `div` 2, y)]) begin_coordinates
 
+
+--ova funkcija iz listi vrijednosti i stanja svih polja uzima samo vrijednosti za svoj red koji je 3. argument i
+--imace vrijednost od 0 do 7 
+takeRowValuesStates :: [FieldValue] -> [FieldState] -> Float -> ([FieldValue], [FieldState])
+takeRowValuesStates values states row_number =  
+ let row_values = take fields_num $ drop (round row_number*fields_num) values
+     row_states = take fields_num $ drop (round row_number*fields_num) states
+ in (row_values, row_states)
+
+--odredjuje redni broj reda ili kolone za proslijedjenu desnu x ili gornju y koordinatu
+row_column_num :: Float -> Float
+row_column_num y = fromIntegral $ fields_num - (size `div` 2 + (round y)) `div` (size `div` fields_num)
+
 render :: GameState -> Picture
+
 
 --test: ako je kraj igre, ne iscrtava se nista
 render GameOver = pictures []
 
 --normalno iscrtavanje u ostalim slucajevima
-render _ = pictures $ (concat $ map (\tuple_y -> draw_rect_row (fst tuple_y) (snd tuple_y)) 
- $ zip begin_coordinates $ end_coordinates) ++ v_lines ++ h_lines
+render (Game pair_game) = 
+ let values = fst pair_game
+     states = snd pair_game
+ in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_column_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
+  $ zip begin_coordinates end_coordinates)
+  ++ v_lines 
+  ++ h_lines
 
 --funkcija render sluzi da trenutno stanje igre pretvori u sliku koja ce nam se prikazati
 --za sada, ona ne zavisi od stanja igre, ovo treba uraditi
@@ -135,5 +167,6 @@ main = play mainWindow background fps initialState render handleKeys update
   where
     update :: Float -> GameState -> GameState
     update _ = id
+
 
 
