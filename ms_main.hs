@@ -32,7 +32,7 @@ data FieldValue = Neighbours Int
 data FieldState = Uncovered
  | Clicked FieldValue
  | Flag
- deriving Show                
+ deriving (Eq,Show)
 
 --tip koji predstavlja stanje igre
 data GameState = Game ([FieldValue], [FieldState])
@@ -50,8 +50,8 @@ count_mines x =
       polja = zip indeksi x
       count :: ((Int,Int),FieldValue) -> FieldValue
       count (_,Mine) = Mine
-      count ((i,j),_) = let lista_indeksa = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
-                            broj_mina = length $ filter (Mine ==) [snd $ polja !! (fields_num*a+b) | (a,b) <- lista_indeksa]
+      count ((i,j),_) = let indeksi_suseda = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
+                            broj_mina = length $ filter (Mine ==) [snd $ polja !! (fields_num*a+b) | (a,b) <- indeksi_suseda]
                         in Neighbours broj_mina
   in map count polja
 
@@ -71,15 +71,36 @@ generateInitialState fields_n mines_n =
 fps :: Int
 fps = 60
 
---ova funkcija treba da promijeni stanje igre na osnovu polja na koje je korisnik kliknuo
+--ova funkcija treba da promijeni stanje igre na osnovu polja na koje je korisnik kliknuo (polje je dato indeksima)
+klikniPolje :: (Int, Int) -> GameState -> GameState
+klikniPolje (i,j) (Game (values,states)) = let states' = take (fields_num*i+j-1) states           --pravim novu listu stanja polja, ovo je deo pre kliknutog polja
+                                               states'' = drop (fields_num*i+j) states            --ovo je deo posle kliknutog polja
+                                               oldState = states !! (fields_num*i+j)              --potrebno je pamtiti staro stanje, zbog izlaska iz rekurzije
+                                               newState = Clicked (values !! (i*fields_num+j))    --ovo je novo stanje kliknutog polja
+                                               indeksi_suseda = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
+                                               newGame = Game (values, states' ++ (newState:states''))
+                                           in if (newState == Clicked Mine) then GameOver
+                                                --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja ukoliko nisu vec kliknuta
+                                                --trenutno nije dobra implementacija, treba popraviti
+                                                --else if and [oldState == Uncovered, newState == Clicked (Neighbours 0)]
+                                                       --then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
+                                                       else newGame
+
+klikniPolje _ GameOver = GameOver
+
+--funkcija koja pretvara koordinate misa u indekse polje i poziva funkciju klikniPolje
 nextState :: Float -> Float -> GameState -> GameState
-nextState _ _ x = x
+nextState x y game = let a = size `div` 2
+                         b = size `div` fields_num
+                         i = floor $ (x+(fromIntegral a))/(fromIntegral b)
+                         j = floor $ (y+(fromIntegral a))/(fromIntegral b)
+                     in klikniPolje (i,j) game
 
 --funkcija koja reaguje na dogadjaj (samo na klik misem, za sada)
 handleKeys :: Event -> GameState -> GameState
 
 --reakcija na levi klik
-handleKeys (EventKey (MouseButton LeftButton) _ _ x) game = nextState (fst x) (snd x) game
+handleKeys (EventKey (MouseButton LeftButton) _ _ (x,y)) game = nextState x y game
 
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
@@ -90,6 +111,7 @@ coordinates = map fromIntegral [(-size) `div` 2, (-size) `div` 2 + size `div` fi
 begin_coordinates = take fields_num coordinates
 end_coordinates = take fields_num (tail coordinates)
 
+draw_rect_row :: Float -> Float -> [Picture]
 draw_rect_row y_begin y_end = map (\tuple_x -> draw_rect (fst tuple_x) (snd tuple_x) y_begin y_end) 
  $ zip begin_coordinates $ end_coordinates  
 
@@ -97,6 +119,11 @@ v_lines = map (color white) $ map (\x -> line[(x, fromIntegral $ (-size) `div` 2
 h_lines = map (color white) $ map (\y -> line[(fromIntegral $ (-size) `div` 2, y),(fromIntegral $ size `div` 2, y)]) begin_coordinates
 
 render :: GameState -> Picture
+
+--test: ako je kraj igre, ne iscrtava se nista
+render GameOver = pictures []
+
+--normalno iscrtavanje u ostalim slucajevima
 render _ = pictures $ (concat $ map (\tuple_y -> draw_rect_row (fst tuple_y) (snd tuple_y)) 
  $ zip begin_coordinates $ end_coordinates) ++ v_lines ++ h_lines
 
