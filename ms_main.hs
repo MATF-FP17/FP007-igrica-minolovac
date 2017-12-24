@@ -2,7 +2,7 @@ module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Graphics.Gloss.Game
+--import Graphics.Gloss.Game (kod Dimitrija nece da se kompajlira ako ima ovog)
 --import Data.List.Split
 
 --size, fields_num, mines_num ce biti stepeni broja 2
@@ -75,18 +75,21 @@ fps = 60
 
 --ova funkcija treba da promijeni stanje igre na osnovu polja na koje je korisnik kliknuo (polje je dato indeksima)
 klikniPolje :: (Int, Int) -> GameState -> GameState
-klikniPolje (i,j) (Game (values,states)) = let states' = take (fields_num*i+j-1) states           --pravim novu listu stanja polja, ovo je deo pre kliknutog polja
-                                               states'' = drop (fields_num*i+j) states            --ovo je deo posle kliknutog polja
-                                               oldState = states !! (fields_num*i+j)              --potrebno je pamtiti staro stanje, zbog izlaska iz rekurzije
-                                               newState = Clicked (values !! (i*fields_num+j))    --ovo je novo stanje kliknutog polja
-                                               indeksi_suseda = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
-                                               newGame = Game (values, states' ++ (newState:states''))
-                                           in if (newState == Clicked Mine) then GameOver
-                                                --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja ukoliko nisu vec kliknuta
-                                                --trenutno nije dobra implementacija, treba popraviti
-                                                --else if and [oldState == Uncovered, newState == Clicked (Neighbours 0)]
-                                                       --then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
-                                                       else newGame
+klikniPolje (i,j) oldGame@(Game (values,states)) =
+  let states' = take (fields_num*i+j) states             --pravim novu listu stanja polja, ovo je deo pre kliknutog polja
+      states'' = drop (fields_num*i+j+1) states          --ovo je deo posle kliknutog polja
+      oldState = states !! (fields_num*i+j)              --potrebno je pamtiti staro stanje, zbog izlaska iz rekurzije (ovde se gleda indeks, a indeksi se broje od 0)
+      newState = Clicked (values !! (i*fields_num+j))    --ovo je novo stanje kliknutog polja
+      indeksi_suseda = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
+      newGame = Game (values, states' ++ (newState:states''))
+  in if (oldState == Uncovered)                          --stanje igre menjamo samo ako je kliknuto polje bilo nekliknuto do tada
+       then                     
+       if (newState == Clicked Mine)
+         then GameOver
+         else if (newState == Clicked (Neighbours 0))    --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja
+                then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
+                else newGame
+       else oldGame
 
 klikniPolje _ GameOver = GameOver
 
@@ -94,15 +97,15 @@ klikniPolje _ GameOver = GameOver
 nextState :: Float -> Float -> GameState -> GameState
 nextState x y game = let a = size `div` 2
                          b = size `div` fields_num
-                         i = floor $ (x+(fromIntegral a))/(fromIntegral b)
-                         j = floor $ (y+(fromIntegral a))/(fromIntegral b)
+                         i = floor $ ((fromIntegral a)-y)/(fromIntegral b)
+                         j = floor $ (x+(fromIntegral a))/(fromIntegral b)
                      in klikniPolje (i,j) game
 
 --funkcija koja reaguje na dogadjaj (samo na klik misem, za sada)
 handleKeys :: Event -> GameState -> GameState
 
---reakcija na levi klik
-handleKeys (EventKey (MouseButton LeftButton) _ _ (x,y)) game = nextState x y game
+--reakcija na levi klik (stavio sam Down da bih mogao lakse da testiram)
+handleKeys (EventKey (MouseButton LeftButton) Down _ (x,y)) game = nextState x y game
 
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
@@ -124,8 +127,7 @@ takeElemValueState :: [FieldValue] -> [FieldState] -> Float -> (FieldValue, Fiel
 takeElemValueState values states column_num = (values !! (round column_num), states !! (round column_num))
 
 draw_rect_row :: ([FieldValue], [FieldState]) -> Float -> Float -> [Picture]
-draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (row_column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) 
-y_begin y_end) 
+draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (row_column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) y_begin y_end) 
  $ zip begin_coordinates end_coordinates  
 
 v_lines = map (color white) $ map (\x -> line[(x, fromIntegral $ (-size) `div` 2),(x, fromIntegral $ size `div` 2)]) begin_coordinates
