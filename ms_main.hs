@@ -115,13 +115,13 @@ handleKeys _ game = game
 --IMPLEMENTIRATI
 draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
 draw_rect (value, Uncovered) x_begin x_end y_begin y_end = polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
-draw_rect (value, Clicked Mine) x_begin x_end y_begin y_end = Text "M"
+draw_rect (value, Clicked Mine) x_begin x_end y_begin y_end = translate (x_begin + 7.5) (y_begin + 10) $ scale 0.6 0.4 (Text "M")
 draw_rect (value, Clicked (Neighbours x)) x_begin x_end y_begin y_end = 
  if x == 0
  then Text "" 
  else translate (x_begin + 7.5) (y_begin + 10) $ scale 0.6 0.4 (Text (show x))
  
-draw_rect (value, Flag) x_begin x_end y_begin y_end = Text "F"
+draw_rect (value, Flag) x_begin x_end y_begin y_end = translate (x_begin + 7.5) (y_begin + 10) $ scale 0.6 0.4 (Text "F")
 
 coordinates = map fromIntegral [(-size) `div` 2, (-size) `div` 2 + size `div` fields_num ..]
 begin_coordinates = take fields_num coordinates
