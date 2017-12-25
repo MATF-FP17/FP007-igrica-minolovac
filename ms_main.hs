@@ -112,14 +112,16 @@ handleKeys _ game = game
 
 
 
-
 --IMPLEMENTIRATI
 draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
-draw_rect pair_vs x_begin x_end y_begin y_end = 
- let value = fst pair_vs
-     state = snd pair_vs 
- in if state == Uncovered then polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
-    else Text "1"
+draw_rect (value, Uncovered) x_begin x_end y_begin y_end = polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
+draw_rect (value, Clicked Mine) x_begin x_end y_begin y_end = Text "M"
+draw_rect (value, Clicked (Neighbours x)) x_begin x_end y_begin y_end = 
+ if x == 0
+ then Text "" 
+ else translate (x_begin + 7.5) (y_begin + 10) $ scale 0.6 0.4 (Text (show x))
+ 
+draw_rect (value, Flag) x_begin x_end y_begin y_end = Text "F"
 
 coordinates = map fromIntegral [(-size) `div` 2, (-size) `div` 2 + size `div` fields_num ..]
 begin_coordinates = take fields_num coordinates
@@ -138,8 +140,7 @@ takeElemValueState :: [FieldValue] -> [FieldState] -> Float -> (FieldValue, Fiel
 takeElemValueState values states col_num = (values !! (round col_num), states !! (round col_num))
 
 draw_rect_row :: ([FieldValue], [FieldState]) -> Float -> Float -> [Picture]
-draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) y_begin y_end) 
- $ zip begin_coordinates end_coordinates  
+draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (column_num $ snd   tuple_x)) (fst tuple_x) (snd tuple_x) y_begin y_end) $ zip begin_coordinates end_coordinates  
 
 v_lines = map (color white) $ map (\x -> line[(x, fromIntegral $ (-size) `div` 2),(x, fromIntegral $ size `div` 2)]) begin_coordinates
 h_lines = map (color white) $ map (\y -> line[(fromIntegral $ (-size) `div` 2, y),(fromIntegral $ size `div` 2, y)]) begin_coordinates
