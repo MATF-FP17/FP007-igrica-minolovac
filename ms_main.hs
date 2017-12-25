@@ -110,6 +110,9 @@ handleKeys (EventKey (MouseButton LeftButton) Down _ (x,y)) game = nextState x y
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
 
+
+
+
 --IMPLEMENTIRATI
 draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
 draw_rect pair_vs x_begin x_end y_begin y_end = 
@@ -122,12 +125,20 @@ coordinates = map fromIntegral [(-size) `div` 2, (-size) `div` 2 + size `div` fi
 begin_coordinates = take fields_num coordinates
 end_coordinates = take fields_num (tail coordinates)
 
+
+--odredjuje redni broj reda ili kolone za proslijedjenu desnu x ili gornju y koordinatu
+row_num :: Float -> Float
+row_num y = fromIntegral $ fields_num - (size `div` 2 + (round y)) `div` (size `div` fields_num)
+
+column_num :: Float -> Float
+column_num y = 7 - (row_num y)
+
 --Na osnovu pozicije od 0 do 7 u koloni vraca bas taj element
 takeElemValueState :: [FieldValue] -> [FieldState] -> Float -> (FieldValue, FieldState)
-takeElemValueState values states column_num = (values !! (round column_num), states !! (round column_num))
+takeElemValueState values states col_num = (values !! (round col_num), states !! (round col_num))
 
 draw_rect_row :: ([FieldValue], [FieldState]) -> Float -> Float -> [Picture]
-draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (row_column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) y_begin y_end) 
+draw_rect_row pair_game y_begin y_end = map (\tuple_x -> draw_rect (takeElemValueState (fst pair_game) (snd pair_game) (column_num $ snd tuple_x)) (fst tuple_x) (snd tuple_x) y_begin y_end) 
  $ zip begin_coordinates end_coordinates  
 
 v_lines = map (color white) $ map (\x -> line[(x, fromIntegral $ (-size) `div` 2),(x, fromIntegral $ size `div` 2)]) begin_coordinates
@@ -142,9 +153,7 @@ takeRowValuesStates values states row_number =
      row_states = take fields_num $ drop (round row_number*fields_num) states
  in (row_values, row_states)
 
---odredjuje redni broj reda ili kolone za proslijedjenu desnu x ili gornju y koordinatu
-row_column_num :: Float -> Float
-row_column_num y = fromIntegral $ fields_num - (size `div` 2 + (round y)) `div` (size `div` fields_num)
+
 
 render :: GameState -> Picture
 
@@ -156,7 +165,7 @@ render GameOver = pictures []
 render (Game pair_game) = 
  let values = fst pair_game
      states = snd pair_game
- in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_column_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
+ in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
   $ zip begin_coordinates end_coordinates)
   ++ v_lines 
   ++ h_lines
