@@ -82,14 +82,16 @@ klikniPolje (i,j) oldGame@(Game (values,states)) =
       newState = Clicked (values !! (i*fields_num+j))    --ovo je novo stanje kliknutog polja
       indeksi_suseda = [(i+s,j+t) | s <- [-1,0,1], t <- [-1,0,1], i+s>=0, j+t>=0, i+s<fields_num, j+t<fields_num, s^2+t^2>0]
       newGame = Game (values, states' ++ (newState:states''))
-  in if (oldState == Uncovered)                          --stanje igre menjamo samo ako je kliknuto polje bilo nekliknuto do tada
-       then                     
-       if (newState == Clicked Mine)
-         then GameOver
-         else if (newState == Clicked (Neighbours 0))    --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja
-                then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
-                else newGame
-       else oldGame
+  in if(i<0 || j<0 || i>(fields_num-1) || j>(fields_num-1))
+     then oldGame
+     else if (oldState == Uncovered)                          --stanje igre menjamo samo ako je kliknuto polje bilo nekliknuto do tada
+               then                     
+               if (newState == Clicked Mine)
+                 then GameOver
+                 else if (newState == Clicked (Neighbours 0))    --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja
+                        then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
+                        else newGame
+               else oldGame
 
 klikniPolje _ GameOver = GameOver
 
