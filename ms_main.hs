@@ -2,12 +2,18 @@ module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import System.Random
+import Data.Time.Clock.POSIX
 --import Graphics.Gloss.Game (kod Dimitrija nece da se kompajlira ako ima ovog)
 --import Data.List.Split
 
+
+--uzimamo trenutno vrijeme
+current_time = fmap round getPOSIXTime
+
 --size, fields_num, mines_num ce biti stepeni broja 2
 --dimenzije prozora ce biti size x size 
-size = 512
+size = 64*fields_num
 
 --pozicija prozora
 position = 0
@@ -16,7 +22,23 @@ position = 0
 fields_num = 8
 
 --broj mina u igri je mines_num
-mines_num = 10 
+mines_num = (fields_num `div` 8) * (fields_num `div` 8) * 10
+
+
+--funkcija koja vraca listu od n random brojeva i generator
+--koristimo trenutno vrijeme za randomizaciju
+--poziva se sa make_rs n (fmap mkStdGen current_time)
+make_rs :: RandomGen g => Int -> g -> ([Int],g)
+make_rs n g = loop [] n g
+  where
+  loop acc 0 g = (reverse acc,g)
+  loop acc n g = let (r,g') = randomR (0,n) g 
+    in loop (r:acc) (pred n) g'
+
+--TODO
+--sada u ovoj listi samo treba uzeti indekse nekog broja od 0 do 5 koji se pojavljuje bar mines_num puta
+--i ti indeksi ce biti pozicije mina na osnovu kojih treba ispravno napraviti funkciju generateInitialState
+random_list = fmap (map (\x -> x `mod` 6)) $ fmap fst $ fmap (make_rs $ fields_num*fields_num) (fmap mkStdGen current_time)
 
 mainWindow :: Display
 mainWindow = InWindow "Minesweeper" (size,size) (position,position)
@@ -135,7 +157,7 @@ row_num :: Float -> Float
 row_num y = fromIntegral $ fields_num - (size `div` 2 + (round y)) `div` (size `div` fields_num)
 
 column_num :: Float -> Float
-column_num y = 7 - (row_num y)
+column_num y = (fromIntegral $ fields_num-1) - (row_num y)
 
 --Na osnovu pozicije od 0 do 7 u koloni vraca bas taj element
 takeElemValueState :: [FieldValue] -> [FieldState] -> Float -> (FieldValue, FieldState)
