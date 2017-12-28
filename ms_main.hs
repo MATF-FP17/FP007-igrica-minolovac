@@ -4,6 +4,8 @@ import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import System.Random
 import Data.Time.Clock.POSIX
+import Data.List
+import System.IO.Unsafe
 --import Graphics.Gloss.Game (kod Dimitrija nece da se kompajlira ako ima ovog)
 --import Data.List.Split
 
@@ -35,10 +37,19 @@ make_rs n g = loop [] n g
   loop acc n g = let (r,g') = randomR (0,n) g 
     in loop (r:acc) (pred n) g'
 
---TODO
+
 --sada u ovoj listi samo treba uzeti indekse nekog broja od 0 do 5 koji se pojavljuje bar mines_num puta
 --i ti indeksi ce biti pozicije mina na osnovu kojih treba ispravno napraviti funkciju generateInitialState
-random_list = fmap (map (\x -> x `mod` 6)) $ fmap fst $ fmap (make_rs $ fields_num*fields_num) (fmap mkStdGen current_time)
+random_list = unsafePerformIO $ fmap (map (\x -> x `mod` 6)) $ fmap fst $ fmap (make_rs $ fields_num*fields_num) (fmap mkStdGen current_time)
+
+--sljedeca linija pronalazi najmanji element od 0 do 5 sa frekvencijom bar mines_num, indeksi u random_list tog elementa bice pozicije mina
+--TODO pojednostaviti sljedeci kod
+selectedElem = ( fst . head . dropWhile (\g -> snd g < mines_num) . map (\g -> (head g, length g)). group . sort) random_list
+
+--moze biti i vise od 10 mina u ovoj verziji igrice
+--TODO
+mines_matrix = map (\x -> x == selectedElem) random_list
+
 
 mainWindow :: Display
 mainWindow = InWindow "Minesweeper" (size,size) (position,position)
@@ -87,7 +98,7 @@ generateInitialState :: Int -> Int -> GameState
      --fields_state = map (\x -> Uncovered) fields_value   
  --in Game (Data.List.Split.chunksOf fields_n fields_value,Data.List.Split.chunksOf fields_n fields_state)
 generateInitialState fields_n mines_n =
-   let fields_value = count_mines $ take (fields_n*fields_n) $ map (\x -> if (fst x) `mod` fields_n == 0 then Mine else Neighbours 0) $ zip [0,1..] [1..]
+   let fields_value = count_mines $ map (\x -> if fst x then Mine else Neighbours 0) $ zip mines_matrix [0..]
        fields_state = map (\x -> Uncovered) fields_value 
    in Game (fields_value, fields_state)
 
