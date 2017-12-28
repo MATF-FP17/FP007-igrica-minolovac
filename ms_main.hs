@@ -43,12 +43,23 @@ make_rs n g = loop [] n g
 random_list = unsafePerformIO $ fmap (map (\x -> x `mod` 6)) $ fmap fst $ fmap (make_rs $ fields_num*fields_num) (fmap mkStdGen current_time)
 
 --sljedeca linija pronalazi najmanji element od 0 do 5 sa frekvencijom bar mines_num, indeksi u random_list tog elementa bice pozicije mina
---TODO pojednostaviti sljedeci kod
+--treba pojednostaviti sljedeci kod
 selectedElem = ( fst . head . dropWhile (\g -> snd g < mines_num) . map (\g -> (head g, length g)). group . sort) random_list
 
---moze biti i vise od 10 mina u ovoj verziji igrice
 --TODO
-mines_matrix = map (\x -> x == selectedElem) random_list
+--Uraditi ovo sa foldl
+minesBefore :: Int -> [(Bool, Int)] -> [(Bool, Int)]
+minesBefore _ []     = []
+minesBefore acc (x:xs) = if fst x == True then (fst x,acc+1+snd x) : minesBefore (acc+1) xs
+                                        else (fst x, acc) : minesBefore acc xs
+
+
+matrix_many_mines = map (\x -> x == selectedElem) random_list
+
+mines_matrix = let minesBefore10 = minesBefore 0 $ zip matrix_many_mines (repeat 0)
+                   firstPart = map fst $ takeWhile (\x -> snd x < 10) $ minesBefore10
+                   lengthTaken = length firstPart
+               in take (lengthTaken+1) matrix_many_mines ++ take ((fields_num*fields_num)-lengthTaken-1) (repeat False)
 
 
 mainWindow :: Display
