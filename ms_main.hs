@@ -77,11 +77,12 @@ data FieldValue = Neighbours Int
 data FieldState = Uncovered
  | Clicked FieldValue
  | Flag
+ | FalseFlag --polja koja su pogresno oznacena zastavicom
  deriving (Eq,Show)
 
 --tip koji predstavlja stanje igre
 data GameState = Game ([FieldValue], [FieldState])
- | GameOver     
+ | GameOver ([FieldValue], [FieldState])
  deriving Show
 
 --ovde bi trebalo da budu: matrica kliknutih polja, matrica mina i mozda jos ponesto...
@@ -131,13 +132,24 @@ klikniPolje (i,j) oldGame@(Game (values,states)) =
      else if (oldState == Uncovered)                          --stanje igre menjamo samo ako je kliknuto polje bilo nekliknuto do tada
                then                     
                if (newState == Clicked Mine)
-                 then GameOver
+                 then lose values states
                  else if (newState == Clicked (Neighbours 0))    --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja
                         then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
                         else newGame
                else oldGame
 
-klikniPolje _ GameOver = GameOver
+klikniPolje _ x = x
+
+--funkcija koja vrsi pripreme za prikaz izgubljene igre
+lose :: [FieldValue] -> [FieldState] -> GameState
+lose values states = let clickMines :: (FieldValue, FieldState) -> (FieldValue, FieldState)
+                         clickMines (Mine,Flag) = (Mine,Flag)
+                         clickMines (Mine,_) = (Mine,Clicked Mine) --sva polja na kojima su mine treba da dobiju stanje kliknute mine
+                         clickMines (x,Flag) = (x,FalseFlag) -- sva polja na kojima su zastavice, a na kojima nisu mine, treba da dobiju stanje pogresne zastave (FalseFlag)
+                         clickMines x = x
+                         gameOver = map clickMines $ zip values states
+                     in GameOver (map fst gameOver, map snd gameOver)
+
 
 --funkcija koja pretvara koordinate misa u indekse polje i poziva funkciju klikniPolje
 nextState :: Float -> Float -> GameState -> GameState
@@ -221,15 +233,9 @@ takeRowValuesStates values states row_number =
      row_states = take fields_num $ drop (round row_number*fields_num) states
  in (row_values, row_states)
 
-
-
+--funkcija render sluzi da trenutno stanje igre pretvori u sliku koja ce nam se prikazati
 render :: GameState -> Picture
 
-
---test: ako je kraj igre, ne iscrtava se nista
-render GameOver = pictures []
-
---normalno iscrtavanje u ostalim slucajevima
 render (Game pair_game) = 
  let values = fst pair_game
      states = snd pair_game
@@ -238,8 +244,13 @@ render (Game pair_game) =
   ++ v_lines 
   ++ h_lines
 
---funkcija render sluzi da trenutno stanje igre pretvori u sliku koja ce nam se prikazati
---za sada, ona ne zavisi od stanja igre, ovo treba uraditi
+render (GameOver pair_game) = 
+ let values = fst pair_game
+     states = snd pair_game
+ in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
+  $ zip begin_coordinates end_coordinates)
+  ++ v_lines 
+  ++ h_lines
 
 main :: IO()
 main = play mainWindow background fps initialState render handleKeys update
