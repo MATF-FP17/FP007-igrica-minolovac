@@ -147,16 +147,37 @@ nextState x y game = let a = size `div` 2
                          j = floor $ (x+(fromIntegral a))/(fromIntegral b)
                      in klikniPolje (i,j) game
 
+--funkcija koja pretvara koordinate misa u indekse polja i postavlja ili skida zastavicu
+flag :: Float -> Float -> GameState -> GameState
+
+--postavlja, odnosno skida zastavicu samo ako je igra u toku
+flag x y oldGame@(Game (values,states)) = let a = size `div` 2
+                                              b = size `div` fields_num
+                                              i = floor $ ((fromIntegral a)-y)/(fromIntegral b)
+                                              j = floor $ (x+(fromIntegral a))/(fromIntegral b)
+                                              states' = take (fields_num*i+j) states             --pravim novu listu stanja polja, ovo je deo pre kliknutog polja
+                                              states'' = drop (fields_num*i+j+1) states          --ovo je deo posle kliknutog polja
+                                              oldState = states !! (fields_num*i+j)
+                                          in if (oldState == Uncovered)
+                                               then Game (values,states' ++ (Flag:states''))
+                                               else if (oldState == Flag)
+                                                      then Game (values,states' ++ (Uncovered:states''))
+                                                      else oldGame
+
+--u ostalim slucajevima funkcija ne radi nista
+flag _ _ x = x
+
 --funkcija koja reaguje na dogadjaj (samo na klik misem, za sada)
 handleKeys :: Event -> GameState -> GameState
 
 --reakcija na levi klik (stavio sam Down da bih mogao lakse da testiram)
 handleKeys (EventKey (MouseButton LeftButton) Down _ (x,y)) game = nextState x y game
 
+--reakcija na desni klik
+handleKeys (EventKey (MouseButton RightButton) Down _ (x,y)) game = flag x y game
+
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
-
-
 
 --IMPLEMENTIRATI
 draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
