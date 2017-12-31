@@ -83,6 +83,7 @@ data FieldState = Uncovered
 --tip koji predstavlja stanje igre
 data GameState = Game ([FieldValue], [FieldState])
  | GameOver ([FieldValue], [FieldState])
+ | Win ([FieldValue], [FieldState])
  deriving Show
 
 --ovde bi trebalo da budu: matrica kliknutih polja, matrica mina i mozda jos ponesto...
@@ -135,9 +136,10 @@ klikniPolje (i,j) oldGame@(Game (values,states)) =
                  then lose values states
                  else if (newState == Clicked (Neighbours 0))    --ako je kliknuto polje u cijoj okolini nema mina, treba kliknuta sva okolna polja
                         then foldl (\game (a,b) -> klikniPolje (a,b) game) newGame indeksi_suseda
-                        else newGame
+                        else checkWin newGame
                else oldGame
 
+--ako igra nije u toku, nemamo akciju
 klikniPolje _ x = x
 
 --funkcija koja vrsi pripreme za prikaz izgubljene igre
@@ -150,6 +152,24 @@ lose values states = let clickMines :: (FieldValue, FieldState) -> (FieldValue, 
                          gameOver = map clickMines $ zip values states
                      in GameOver (map fst gameOver, map snd gameOver)
 
+--funkcija koja proverava da li je ostvarena pobeda
+checkWin :: GameState -> GameState
+checkWin game@(Game (values,states)) = let checkMines :: (FieldValue, FieldState) -> Bool
+                                           checkMines ((Neighbours x),(Clicked (Neighbours y))) = x == y --ovo je uvek tacno, ne utice na ukupnu tacnost
+                                           checkMines ((Neighbours x),_) = False --ako polje koje nije mina nije kliknuti, igra nije dobijena
+                                           checkMines _ = True
+                                       in if and $ map checkMines $ zip values states --proverava se da li ne postoji nijedno polje koje nije mina i nije kliknuto
+                                            then win values states --ako ne postoji, onda vrsimo pripreme za prikay pobede
+                                            else game --inace samo prosledjujemo igru kakva je poslata ovoj funkciji
+checkWin x = x
+
+--funkcija koja vrsi pripreme za prikaz dobijene igre
+win :: [FieldValue] -> [FieldState] -> GameState
+win values states = let flagMines :: (FieldValue, FieldState) -> (FieldValue, FieldState)
+                        flagMines (Mine,_) = (Mine,Flag) --polja na kojima su mine treba da dobiju zastavicu
+                        flagMines x = x --ostala polja ostaju u stanju u kojem su (polja koja nisu mine treba da budu kliknuta)
+                        game = map flagMines $ zip values states
+                     in Win (map fst game, map snd game)
 
 --funkcija koja pretvara koordinate misa u indekse polje i poziva funkciju klikniPolje
 nextState :: Float -> Float -> GameState -> GameState
@@ -245,6 +265,14 @@ render (Game pair_game) =
   ++ h_lines
 
 render (GameOver pair_game) = 
+ let values = fst pair_game
+     states = snd pair_game
+ in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
+  $ zip begin_coordinates end_coordinates)
+  ++ v_lines 
+  ++ h_lines
+
+render (Win pair_game) = 
  let values = fst pair_game
      states = snd pair_game
  in pictures $ (concat $ map (\tuple_y -> draw_rect_row (takeRowValuesStates values states $ row_num $ snd tuple_y) (fst tuple_y) (snd tuple_y)) 
