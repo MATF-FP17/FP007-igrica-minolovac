@@ -211,6 +211,18 @@ handleKeys (EventKey (MouseButton RightButton) Down _ (x,y)) game = flag x y gam
 --na ostale dogadjaje ne reaguje
 handleKeys _ game = game
 
+--slike :: [Picture]
+--slike = map (\x -> loadBMP $ "76px-Minesweeper_" ++ show x ++ "_svg.bmp") [0,1..8]
+
+--mina :: Picture
+--mina = loadBMP "1473847111_large.bmp"
+
+--zastavica :: Picture
+--zastavica = loadBMP "76px-Minesweeper_flag_svg.bmp"
+
+--precrtano :: Picture
+--precrtano = loadBMP "1473847111_large_crossed.bmp"
+
 --IMPLEMENTIRATI
 draw_rect :: (FieldValue, FieldState) -> Float -> Float -> Float -> Float -> Picture
 draw_rect (value, Uncovered) x_begin x_end y_begin y_end = polygon [(x_begin, y_begin), (x_end, y_begin), (x_end, y_end), (x_begin, y_end)]
