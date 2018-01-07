@@ -10,17 +10,16 @@ generateMinesMatrix fields_n mines_n r_list =
     --treba pojednostaviti sljedeci kod
     selectedElem = ( fst . head . dropWhile (\g -> snd g < mines_n) . map (\g -> (head g, length g)). group . sort) r_list
 
-    --TODO
-    --Uraditi ovo sa foldl
+    --funkcija racuna matricu u kojoj je druga komponenta para broj mina do tada detektovanih u matrici
     minesBefore :: Int -> [(Bool, Int)] -> [(Bool, Int)]
     minesBefore _ []     = []
-    minesBefore acc (x:xs) = if fst x == True then (fst x,acc+1+snd x) : minesBefore (acc+1) xs
+    minesBefore acc (x:xs) = if fst x then (fst x,acc+1) : minesBefore (acc+1) xs
                                               else (fst x, acc) : minesBefore acc xs
 
     matrix_many_mines = map (\x -> x == selectedElem) r_list
 
     minesBefore10 = minesBefore 0 $ zip matrix_many_mines (repeat 0)
-    firstPart = map fst $ takeWhile (\x -> snd x < 10) $ minesBefore10
+    firstPart = map fst $ takeWhile (\x -> snd x < mines_n) $ minesBefore10
     lengthTaken = length firstPart
   in take (lengthTaken+1) matrix_many_mines ++ take ((fields_n*fields_n)-lengthTaken-1) (repeat False)
 
